@@ -43,8 +43,12 @@ fn create_user(username: &str, password: &str, connection: &Connection) ->Result
 
 fn login_user(username: &str, password: &str, conn: &Connection) -> Result<Id>
 {
-    let mut stmt = conn.prepare("SELECT COUNT(*) FROM users WHERE username = ?1 AND password = ?2")?;
+    let mut stmt = conn.prepare("SELECT id FROM users WHERE username = ?1 AND password = ?2")?;
     let id: i64 = stmt.query_row(&[username, password], |row| row.get(0))?;
+
+    if id == 0 {
+        return Err(rusqlite::Error::QueryReturnedNoRows);
+    }
 
     Ok(id as Id)
 }
@@ -55,7 +59,6 @@ pub fn create_user_flow(conn: &Connection) -> Result<Id> {
         password: String::new(),
     };
 
-    println!("Create User");
     println!("Enter username:");
     io::stdin()
         .read_line(&mut user_info.id)
@@ -66,12 +69,15 @@ pub fn create_user_flow(conn: &Connection) -> Result<Id> {
         .read_line(&mut user_info.password)
         .expect("Failed to read input");
 
-    if let Ok(id) = create_user(&user_info.id.trim(), &user_info.password.trim(), conn) {
-        println!("User created successfully");
-        return Ok(id as Id);
-    } else {
-        println!("Failed to create user");
-        return Err(rusqlite::Error::InvalidQuery);
+    match create_user(&user_info.id.trim(), &user_info.password.trim(), conn) {
+        Ok(id) => {
+            println!("User created successfully");
+            return Ok(id as Id);
+        }, 
+        Err(err) => {
+            println!("Failed to create user : {} ", err);
+            return Err(rusqlite::Error::InvalidQuery);
+        }
     }
 }
 

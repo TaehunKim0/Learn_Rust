@@ -1,8 +1,8 @@
 use rusqlite::{Connection, Result};
 use std::io;
 
-mod user;
 mod character;
+mod user;
 
 fn connect_to_database() -> Result<Connection> {
     Connection::open("data/game.db")
@@ -26,28 +26,40 @@ fn main() {
         .read_line(&mut choice)
         .expect("Failed to read input");
 
-    let user_id : Result<user::Id> = match choice.trim().parse::<u64>() {
+    let user_id: Result<user::Id> = match choice.trim().parse::<u64>() {
         Ok(1) => user::create_user_flow(&conn),
         Ok(2) => user::login_flow(&conn),
-        _ => Err(rusqlite::Error::InvalidQuery),
+        _ => return,
     };
 
-    println!("1. Create Character");
-    println!("2. Show all Characters");
-    
-    let mut characterchoice = String::new();
+    if let Err(_) = user_id {
+        return;
+    }
 
-    io::stdin()
-        .read_line(&mut characterchoice)
-        .expect("Failed to read input");
+    let user_id = user_id.unwrap();
+    let mut exit = false;
 
-    match characterchoice.trim().parse::<u64>() {
-        Ok(1) => match character::create_character_flow(&user_id.unwrap(), &conn){
-            Ok(()) => println!("Create Character Success"),
-            _ => println!("Failed to create Character"),
+    while exit == false {
+        println!("1. Create Character");
+        println!("2. Show all Characters");
+        println!("3. Delete Character");
+        println!("4. Exit");
+
+        let mut characterchoice = String::new();
+
+        io::stdin()
+            .read_line(&mut characterchoice)
+            .expect("Failed to read input");
+
+        match characterchoice.trim().parse::<u64>() {
+            Ok(1) => match character::create_character_flow(&user_id, &conn) {
+                Ok(()) => println!("Create Character Success"),
+                _ => println!("Failed to create Character"),
+            },
+            Ok(2) => character::show_all_characters(&user_id, &conn),
+            Ok(3) => character::delete_character_flow(&user_id, &conn),
+            Ok(4) => { exit = true },
+            _ => println!("Invalid input"),
         }
-            ,
-        Ok(2) => character::show_all_characters(&user_id.unwrap(), &conn),
-        _ => println!("Invalid input"),
     }
 }
